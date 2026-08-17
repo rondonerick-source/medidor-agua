@@ -1,0 +1,10 @@
+{
+  "name": "Medidor de Agua",
+  "short_name": "Medidor",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007aff",
+  "orientation": "portrait",
+  "lang": "es"
+}

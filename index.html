@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<meta name="apple-mobile-web-app-capable"
+      content="yes">
+
+<meta name="apple-mobile-web-app-status-bar-style"
+      content="default">
+
+<meta name="apple-mobile-web-app-title"
+      content="Medidor">
+
+<title>Medidor de Agua</title>
+<link rel="manifest" href="manifest.json">
+
+<style>
+
+* {
+    box-sizing: border-box;
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+body {
+    margin: 0;
+    background: #f2f2f7;
+    color: #222;
+}
+
+.contenedor {
+    max-width: 500px;
+    margin: auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.tarjeta {
+    background: white;
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 7px;
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    font-size: 18px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    background: #007aff;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+button:active {
+    opacity: 0.7;
+}
+
+.boton-secundario {
+    background: #34c759;
+}
+
+.boton-rojo {
+    background: #ff3b30;
+}
+
+.resultado {
+    font-size: 20px;
+    margin: 12px 0;
+}
+
+.total {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 15px;
+}
+
+.historial-item {
+    border-top: 1px solid #ddd;
+    padding: 15px 0;
+}
+
+.fecha {
+    color: #666;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.boton-eliminar {
+    background: #ff3b30;
+    padding: 9px;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.info {
+    background: #e5f1ff;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+<h1>💧 Medidor de Agua</h1>
+
+<div class="tarjeta">
+
+<div class="info">
+El medidor utiliza un decimal implícito.
+<br><br>
+Ejemplo: <strong>10539 = 1053,9 m³</strong>
+</div>
+
+<label>Lectura anterior</label>
+
+<input
+    id="lecturaAnterior"
+    type="number"
+    inputmode="decimal"
+    placeholder="Ejemplo: 10539"
+>
+
+<label>Lectura actual</label>
+
+<input
+    id="lecturaActual"
+    type="number"
+    inputmode="decimal"
+    placeholder="Ejemplo: 10572"
+>
+
+<label>Precio por m³</label>
+
+<input
+    id="precio"
+    type="number"
+    inputmode="decimal"
+    placeholder="Ejemplo: 600"
+>
+
+<button onclick="calcular()">
+CALCULAR
+</button>
+
+<button
+    class="boton-secundario"
+    onclick="nuevaLectura()">
+NUEVA LECTURA
+</button>
+
+</div>
+
+
+<div class="tarjeta">
+
+<h2>Resultado</h2>
+
+<div class="resultado">
+Lectura anterior:
+<strong id="anteriorResultado">0</strong> m³
+</div>
+
+<div class="resultado">
+Lectura actual:
+<strong id="actualResultado">0</strong> m³
+</div>
+
+<div class="resultado">
+Consumo:
+<strong id="consumoResultado">0</strong> m³
+</div>
+
+<div class="resultado">
+Precio:
+$<strong id="precioResultado">0</strong>
+</div>
+
+<div class="total">
+Total:
+$<span id="totalResultado">0</span>
+</div>
+
+</div>
+
+
+<div class="tarjeta">
+
+<h2>📋 Historial</h2>
+
+<div id="historial"></div>
+
+<button
+    class="boton-rojo"
+    onclick="borrarHistorial()">
+BORRAR TODO EL HISTORIAL
+</button>
+
+</div>
+
+</div>
+
+
+<script>
+
+
+function formatoNumero(numero) {
+
+    return numero.toLocaleString("es-CO", {
+
+        minimumFractionDigits: 1,
+
+        maximumFractionDigits: 1
+
+    });
+
+}
+
+
+function formatoDinero(numero) {
+
+    return numero.toLocaleString("es-CO", {
+
+        maximumFractionDigits: 0
+
+    });
+
+}
+
+
+function calcular() {
+
+    let anterior = parseFloat(
+
+        document.getElementById(
+            "lecturaAnterior"
+        ).value
+
+    );
+
+
+    let actual = parseFloat(
+
+        document.getElementById(
+            "lecturaActual"
+        ).value
+
+    );
+
+
+    let precio = parseFloat(
+
+        document.getElementById(
+            "precio"
+        ).value
+
+    );
+
+
+    if (
+        isNaN(anterior) ||
+        isNaN(actual) ||
+        isNaN(precio)
+    ) {
+
+        alert(
+            "Por favor completa todos los valores."
+        );
+
+        return;
+
+    }
+
+
+    let anteriorReal = anterior / 10;
+
+    let actualReal = actual / 10;
+
+
+    let consumo =
+        actualReal - anteriorReal;
+
+
+    if (consumo < 0) {
+
+        alert(
+            "La lectura actual no puede ser menor que la anterior."
+        );
+
+        return;
+
+    }
+
+
+    let total =
+        consumo * precio;
+
+
+    document.getElementById(
+        "anteriorResultado"
+    ).textContent =
+        formatoNumero(anteriorReal);
+
+
+    document.getElementById(
+        "actualResultado"
+    ).textContent =
+        formatoNumero(actualReal);
+
+
+    document.getElementById(
+        "consumoResultado"
+    ).textContent =
+        formatoNumero(consumo);
+
+
+    document.getElementById(
+        "precioResultado"
+    ).textContent =
+        formatoDinero(precio);
+
+
+    document.getElementById(
+        "totalResultado"
+    ).textContent =
+        formatoDinero(total);
+
+
+    guardarDatos(
+
+        anteriorReal,
+
+        actualReal,
+
+        precio,
+
+        consumo,
+
+        total
+
+    );
+
+}
+
+
+function guardarDatos(
+
+    anterior,
+
+    actual,
+
+    precio,
+
+    consumo,
+
+    total
+
+) {
+
+
+    let historial = JSON.parse(
+
+        localStorage.getItem(
+            "historialMedidor"
+        )
+
+    ) || [];
+
+
+    let ahora = new Date();
+
+
+    let registro = {
+
+        fecha:
+            ahora.toLocaleDateString(
+                "es-CO"
+            ),
+
+        hora:
+            ahora.toLocaleTimeString(
+                "es-CO",
+                {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                }
+            ),
+
+        anterior: anterior,
+
+        actual: actual,
+
+        consumo: consumo,
+
+        precio: precio,
+
+        total: total
+
+    };
+
+
+    historial.unshift(registro);
+
+
+    localStorage.setItem(
+
+        "historialMedidor",
+
+        JSON.stringify(historial)
+
+    );
+
+
+    mostrarHistorial();
+
+}
+
+
+function mostrarHistorial() {
+
+
+    let historial = JSON.parse(
+
+        localStorage.getItem(
+            "historialMedidor"
+        )
+
+    ) || [];
+
+
+    let contenedor =
+        document.getElementById(
+            "historial"
+        );
+
+
+    contenedor.innerHTML = "";
+
+
+    if (historial.length === 0) {
+
+        contenedor.innerHTML =
+            "<p>No hay lecturas guardadas.</p>";
+
+        return;
+
+    }
+
+
+    historial.forEach(
+
+        function(registro, indice) {
+
+
+            let elemento =
+                document.createElement(
+                    "div"
+                );
+
+
+            elemento.className =
+                "historial-item";
+
+
+            elemento.innerHTML = `
+
+                <strong>
+                    ${registro.fecha}
+                    -
+                    ${registro.hora}
+                </strong>
+
+                <div class="fecha">
+                    Anterior:
+                    ${formatoNumero(
+                        registro.anterior
+                    )}
+                    m³
+                </div>
+
+                <div class="fecha">
+                    Actual:
+                    ${formatoNumero(
+                        registro.actual
+                    )}
+                    m³
+                </div>
+
+                <div class="fecha">
+                    Consumo:
+                    ${formatoNumero(
+                        registro.consumo
+                    )}
+                    m³
+                </div>
+
+                <div class="fecha">
+                    Precio:
+                    $${formatoDinero(
+                        registro.precio
+                    )}
+                </div>
+
+                <div>
+                    <strong>
+                        Total:
+                        $${formatoDinero(
+                            registro.total
+                        )}
+                    </strong>
+                </div>
+
+                <button
+                    class="boton-eliminar"
+                    onclick="eliminarRegistro(
+                        ${indice}
+                    )">
+                    ELIMINAR
+                </button>
+
+            `;
+
+
+            contenedor.appendChild(
+                elemento
+            );
+
+        }
+
+    );
+
+}
+
+
+function nuevaLectura() {
+
+
+    let actual =
+        document.getElementById(
+            "lecturaActual"
+        ).value;
+
+
+    if (actual !== "") {
+
+        document.getElementById(
+            "lecturaAnterior"
+        ).value = actual;
+
+    }
+
+
+    document.getElementById(
+        "lecturaActual"
+    ).value = "";
+
+
+    document.getElementById(
+        "anteriorResultado"
+    ).textContent = "0";
+
+
+    document.getElementById(
+        "actualResultado"
+    ).textContent = "0";
+
+
+    document.getElementById(
+        "consumoResultado"
+    ).textContent = "0";
+
+
+    document.getElementById(
+        "totalResultado"
+    ).textContent = "0";
+
+
+    document.getElementById(
+        "lecturaActual"
+    ).focus();
+
+}
+
+
+function eliminarRegistro(indice) {
+
+
+    let historial = JSON.parse(
+
+        localStorage.getItem(
+            "historialMedidor"
+        )
+
+    ) || [];
+
+
+    historial.splice(indice, 1);
+
+
+    localStorage.setItem(
+
+        "historialMedidor",
+
+        JSON.stringify(historial)
+
+    );
+
+
+    mostrarHistorial();
+
+}
+
+
+function borrarHistorial() {
+
+
+    if (
+
+        confirm(
+            "¿Seguro que quieres borrar todo el historial?"
+        )
+
+    ) {
+
+        localStorage.removeItem(
+            "historialMedidor"
+        );
+
+
+        mostrarHistorial();
+
+    }
+
+}
+
+
+mostrarHistorial();
+
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./service-worker.js")
+        .then(() => {
+            console.log("Aplicación preparada para funcionar sin Internet");
+        })
+        .catch(error => {
+            console.log("Error:", error);
+        });
+}
+</script>
+</body>
+</html>
